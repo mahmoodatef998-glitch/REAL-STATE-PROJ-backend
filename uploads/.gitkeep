@@ -1,0 +1,4 @@
+# This file keeps the uploads directory in version control
+# Actual upload files are ignored by .gitignore
+
+

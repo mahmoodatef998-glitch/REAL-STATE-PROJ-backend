@@ -1,0 +1,166 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("client")
+  status    String   @default("approved")
+  phone     String?
+  whatsapp  String?
+  avatar    String?
+  companyId Int?     @map("company_id") // Multi-tenant support
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  company    Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  properties Property[]
+  agent      Agent?
+  deals      Deal[]         @relation("BrokerDeals") // Deals created by this broker
+  clientDeals Deal[]         @relation("ClientDeals") // Deals where this user is the client
+  leads      Lead[]         @relation("BrokerLeads") // Leads assigned to this broker
+  // Refresh tokens for session management
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Property {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  type        String
+  purpose     String
+  price       Int
+  areaSqft    Int?     @map("area_sqft")
+  bedrooms    Int?
+  bathrooms   Int?
+  emirate     String
+  location    String?
+  images      String?  // JSON array stored as string
+  features    String?  // JSON array stored as string
+  ownerId     Int?     @map("owner_id")
+  companyId   Int?     @map("company_id") // Multi-tenant support
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner   User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  leads   Lead[]
+  deals   Deal[]  // Deals associated with this property
+
+  @@map("properties")
+}
+
+model Lead {
+  id         Int       @id @default(autoincrement())
+  name       String    @map("lead_name")
+  email      String    @default("")
+  phone      String    @map("lead_phone")
+  message    String?
+  propertyId Int?      @map("property_id")
+  brokerId   Int?      @map("broker_id") // Broker who listed the property
+  companyId  Int?      @map("company_id") // Multi-tenant support
+  status     String    @default("new") // new, contacted, negotiating, closed
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  broker   User?     @relation("BrokerLeads", fields: [brokerId], references: [id], onDelete: SetNull)
+  company  Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@map("leads")
+}
+
+model Agent {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  specialization String?
+  experienceYears Int?   @map("experience_years")
+  bio            String?
+  linkedinUrl    String?  @map("linkedin_url")
+  instagramUrl   String?  @map("instagram_url")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("agents")
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  email     String?
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users     User[]
+  properties Property[]
+  leads     Lead[]
+  deals     Deal[]
+
+  @@map("companies")
+}
+
+model Deal {
+  id                Int       @id @default(autoincrement())
+  propertyId        Int       @map("property_id")
+  brokerId          Int       @map("broker_id")
+  companyId         Int       @map("company_id")
+  clientId          Int?      @map("client_id") // Optional: link to User (client)
+  clientName        String    @map("client_name")
+  dealType          String    @default("sale") @map("deal_type") // sale or rent
+  dealValue         Float     @map("deal_value") // Main deal value (same as salePrice for backward compatibility)
+  salePrice         Float?    @map("sale_price") // Keep for backward compatibility (will sync with dealValue)
+  commissionRate    Float?    @map("commission_rate") // Admin sets this
+  commissionValue   Float?    @map("commission_value") // Total commission (auto-calculated: dealValue * commissionRate)
+  brokerShare       Float?    @map("broker_share") // 70% of commission (set by admin)
+  companyShare      Float?    @map("company_share") // 30% of commission (set by admin)
+  commissionApproved Boolean  @default(false) @map("commission_approved") // Admin approved commission
+  dateClosed        DateTime? @map("date_closed") // When deal was closed
+  status            String    @default("open") // open, closed, cancelled
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  broker   User     @relation("BrokerDeals", fields: [brokerId], references: [id], onDelete: Cascade)
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client   User?    @relation("ClientDeals", fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@map("deals")
+}
+
+model RefreshToken {
+  id          Int      @id @default(autoincrement())
+  token       String   @unique
+  userId      Int      @map("user_id")
+  revoked     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  expiresAt   DateTime? @map("expires_at")
+  replacedBy  String?  @map("replaced_by")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}

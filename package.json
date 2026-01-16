@@ -1,0 +1,51 @@
+{
+  "name": "alrabie-real-estate-backend",
+  "version": "1.0.0",
+  "description": "Backend for Alrabie Real Estate application",
+  "main": "start-server.js",
+  "scripts": {
+    "start": "node start-server.js",
+    "dev": "nodemon start-server.js",
+    "init-db": "node scripts/init-db.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:health": "jest __tests__/health.test.js",
+    "start:pm2": "pm2 start ecosystem.config.js --env production && pm2 save",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:prod": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "migrate:sqlite-to-postgres": "node scripts/migrate-to-postgresql.js"
+  },
+  "keywords": [
+    "real-estate",
+    "backend",
+    "api"
+  ],
+  "author": "Alrabie Real Estate",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^6.18.0",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.3.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "cookie-parser": "^1.4.6",
+    "pg": "^8.16.3",
+    "prisma": "^6.18.0",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^7.1.4"
+  }
+}
