@@ -347,7 +347,25 @@ npm run test:health
 
 ## 🚢 Deployment
 
-### Using PM2
+### Quick Deploy Options
+
+#### Option 1: Supabase + Railway (Recommended) ⭐
+- **Database**: Supabase (PostgreSQL)
+- **Backend**: Railway
+- **Guide**: See [SUPABASE_QUICK_SETUP.md](./SUPABASE_QUICK_SETUP.md) for quick setup
+- **Full Guide**: See [SUPABASE_DEPLOYMENT.md](./SUPABASE_DEPLOYMENT.md) for detailed instructions
+
+#### Option 2: Railway (Full Stack)
+- **Database**: Railway PostgreSQL
+- **Backend**: Railway
+- See Railway deployment guides in project root
+
+#### Option 3: Vercel + Supabase
+- **Database**: Supabase (PostgreSQL)
+- **Backend**: Vercel
+- See [SUPABASE_DEPLOYMENT.md](./SUPABASE_DEPLOYMENT.md)
+
+### Using PM2 (Self-hosted)
 
 ```bash
 # Start with PM2
