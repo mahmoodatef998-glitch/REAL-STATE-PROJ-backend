@@ -25,11 +25,16 @@ async function issueRefreshToken(res, userId) {
   const token = generateRefreshToken();
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
   await RefreshToken.create({ token, userId, expiresAt });
+  
+  // In development, secure must be false. In production, secure must be true
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   res.cookie('refreshToken', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction, // false in dev, true in production
     sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: '/'
   });
 }
 
@@ -314,7 +319,15 @@ router.post('/refresh', async (req, res, next) => {
     const newRefresh = generateRefreshToken();
     const newExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await RefreshToken.rotate(stored.id, newRefresh, newExpires);
-    res.cookie('refreshToken', newRefresh, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('refreshToken', newRefresh, { 
+      httpOnly: true, 
+      secure: isProduction,
+      sameSite: 'lax', 
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: '/'
+    });
 
     res.json({ success: true, token: accessToken, user: user.toJSON() });
   } catch (error) {

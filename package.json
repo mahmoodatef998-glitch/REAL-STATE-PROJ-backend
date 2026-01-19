@@ -7,6 +7,7 @@
     "start": "node start-server.js",
     "dev": "nodemon start-server.js",
     "init-db": "node scripts/init-db.js",
+    "seed": "node prisma/seed.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

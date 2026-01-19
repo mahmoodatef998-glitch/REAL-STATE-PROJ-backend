@@ -188,3 +188,4 @@ DATABASE_URL=postgresql://postgres:M00243540000m@db.yzeirccdvvshpygofnlg.supabas
 
 **تم إنشاء هذا الملف بواسطة AI Assistant** 🤖
 
+

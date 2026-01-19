@@ -141,18 +141,25 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Rate limiting
-const limiter = rateLimit({
+// Development mode: Disable rate limiting for easier testing
+// Production mode: Enable rate limiting
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+const limiter = isDevelopment ? (req, res, next) => next() : rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false
 });
-app.use(limiter);
 
-// Stricter limiter for auth endpoints to reduce brute-force risk
-const authLimiter = rateLimit({
+if (!isDevelopment) {
+  app.use(limiter);
+}
+
+// Stricter limiter for auth endpoints - more lenient in development
+const authLimiter = isDevelopment ? (req, res, next) => next() : rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 requests per windowMs on auth
+  max: 50, // limit each IP to 50 requests per windowMs on auth (increased from 10)
   message: { success: false, error: 'Too many requests from this IP, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false
@@ -207,7 +214,7 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control'],
-  exposedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Type', 'Authorization', 'Set-Cookie'],
   optionsSuccessStatus: 200,
   preflightContinue: false
 }));
@@ -287,6 +294,7 @@ app.use('/api/leads', leadsRoutes);
 app.use('/api/deals', require('./routes/deals'));
 app.use('/api/companies', require('./routes/companies'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/subscriptions', require('./routes/subscriptions'));
 
 // Default images endpoint for properties without images
 app.get('/api/images/default/:type', (req, res) => {

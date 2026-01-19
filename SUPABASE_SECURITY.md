@@ -198,3 +198,4 @@ postgresql://postgres:M00243540000m@db.yzeirccdvvshpygofnlg.supabase.co:5432/pos
 
 **⚠️ تذكر**: Service Role Key مثل مفتاح المنزل - احفظه في مكان آمن ولا تشاركه أبداً!
 
+

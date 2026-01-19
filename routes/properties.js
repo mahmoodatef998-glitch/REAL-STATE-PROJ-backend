@@ -5,6 +5,9 @@ const {
   validateProperty, 
   handleValidationErrors 
 } = require('../validators/propertyValidator');
+const { tenantIsolation, checkTenantAccess, buildTenantWhere } = require('../middleware/tenantIsolation');
+const UsageService = require('../services/usageService');
+const Subscription = require('../models/Subscription');
 const multer = require('multer');
 const path = require('path');
 
@@ -74,8 +77,8 @@ router.get('/new-arrivals/:limit?', async (req, res) => {
   }
 });
 
-// Get all properties with filters
-router.get('/', async (req, res) => {
+// Get all properties with filters (with tenant isolation)
+router.get('/', tenantIsolation, async (req, res, next) => {
   try {
     const filters = {
       type: req.query.type,
@@ -83,19 +86,20 @@ router.get('/', async (req, res) => {
       emirate: req.query.emirate,
       price_min: req.query.price_min ? parseInt(req.query.price_min) : undefined,
       price_max: req.query.price_max ? parseInt(req.query.price_max) : undefined,
-      status: req.query.status, // Support status filtering (e.g., "active,available")
+      status: req.query.status,
       search: req.query.search,
       sort: req.query.sort,
-      limit: req.query.limit ? parseInt(req.query.limit) : undefined
+      limit: req.query.limit ? parseInt(req.query.limit) : undefined,
+      // Add tenant isolation
+      companyId: req.tenantId
     };
 
     const properties = await Property.getAll(filters);
-    // Ensure owner info is included in response
     const propertiesData = properties.map(p => p.toJSON ? p.toJSON() : p);
     res.json({ properties: propertiesData });
   } catch (error) {
     console.error('Get properties error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    next(error);
   }
 });
 
@@ -118,9 +122,28 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new property (with image upload)
-router.post('/', authenticateToken, requireRole(['admin', 'broker']), runUpload('images', 20), async (req, res, next) => {
+// Create new property (with image upload, usage limit check)
+router.post('/', authenticateToken, requireRole(['admin', 'broker']), tenantIsolation, runUpload('images', 20), async (req, res, next) => {
   try {
+    // Check usage limit if user has a company
+    if (req.user.companyId) {
+      const subscription = await Subscription.findByCompanyId(req.user.companyId);
+      if (subscription) {
+        const plan = await subscription.getPlan();
+        const limitCheck = await UsageService.checkLimit(req.user.companyId, 'property', plan);
+        
+        if (!limitCheck.allowed) {
+          return res.status(403).json({
+            success: false,
+            error: 'Properties limit reached',
+            code: 'USAGE_LIMIT_REACHED',
+            limit: limitCheck.limit,
+            current: limitCheck.current
+          });
+        }
+      }
+    }
+
     const files = req.files || [];
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const images = files.map(file => `${baseUrl}/uploads/${file.filename}`);
@@ -147,9 +170,16 @@ router.post('/', authenticateToken, requireRole(['admin', 'broker']), runUpload(
       location: location,
       images: images,
       features: parsedFeatures,
-      owner_id: req.user.id
+      owner_id: req.user.id,
+      company_id: req.user.companyId // Add company ID for tenant isolation
     };
     const property = await Property.create(propertyData);
+    
+    // Increment usage
+    if (req.user.companyId) {
+      await UsageService.increment(req.user.companyId, 'property');
+    }
+    
     res.status(201).json({
       success: true,
       message: 'Property created successfully',
@@ -161,9 +191,11 @@ router.post('/', authenticateToken, requireRole(['admin', 'broker']), runUpload(
   }
 });
 
-// Update property (with optional image upload)
-router.put('/:id', authenticateToken, requireRole(['admin', 'broker']), runUpload('images', 20), async (req, res, next) => {
+// Update property (with optional image upload, tenant access check)
+router.put('/:id', authenticateToken, requireRole(['admin', 'broker']), tenantIsolation, checkTenantAccess, runUpload('images', 20), async (req, res, next) => {
   try {
+    req.resourceType = 'property'; // Set for checkTenantAccess
+    
     const property = await Property.findById(req.params.id);
     
     if (!property) {
@@ -173,7 +205,7 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'broker']), runUploa
       });
     }
 
-    // Check if user is owner or admin
+    // Check if user is owner or admin (additional check)
     if (property.owner_id !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ 
         success: false,
@@ -260,26 +292,50 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'broker']), runUploa
   }
 });
 
-// Delete property
-router.delete('/:id', authenticateToken, async (req, res) => {
+// Delete property (with tenant access check and usage decrement)
+router.delete('/:id', authenticateToken, tenantIsolation, async (req, res, next) => {
   try {
+    req.resourceType = 'property'; // Set for checkTenantAccess
+    
     const property = await Property.findById(req.params.id);
     
     if (!property) {
-      return res.status(404).json({ error: 'Property not found' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Property not found' 
+      });
+    }
+
+    // Check tenant access (unless super admin)
+    if (!req.isSuperAdmin && property.companyId !== req.user.companyId) {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Access denied' 
+      });
     }
 
     // Check if user is owner or admin
     if (property.owner_id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ 
+        success: false,
+        error: 'Access denied' 
+      });
     }
 
     await property.delete();
 
-    res.json({ message: 'Property deleted successfully' });
+    // Decrement usage
+    if (property.companyId) {
+      await UsageService.decrement(property.companyId, 'property');
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Property deleted successfully' 
+    });
   } catch (error) {
     console.error('Delete property error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    next(error);
   }
 });
 

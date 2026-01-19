@@ -33,6 +33,7 @@ model User {
   leads      Lead[]         @relation("BrokerLeads") // Leads assigned to this broker
   // Refresh tokens for session management
   refreshTokens RefreshToken[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -110,14 +111,20 @@ model Company {
   email     String?
   phone     String?
   address   String?
+  logo      String?
+  website   String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  users     User[]
-  properties Property[]
-  leads     Lead[]
-  deals     Deal[]
+  users         User[]
+  properties    Property[]
+  leads         Lead[]
+  deals         Deal[]
+  subscription  Subscription?
+  usage         Usage[]
+  invoices      Invoice[]
+  notifications Notification[]
 
   @@map("companies")
 }
@@ -163,4 +170,121 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+// Plan Model - الخطط المتاحة
+model Plan {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique // free, basic, premium, enterprise
+  displayName     String    @map("display_name")
+  description     String?
+  price           Float     @default(0) // السعر الشهري
+  currency        String    @default("AED")
+  propertiesLimit Int?      @map("properties_limit") // null = unlimited
+  brokersLimit    Int?      @map("brokers_limit")
+  leadsLimit      Int?      @map("leads_limit")
+  dealsLimit      Int?      @map("deals_limit")
+  features        String?   // JSON array
+  isActive        Boolean   @default(true) @map("is_active")
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  subscriptions   Subscription[]
+  
+  @@map("plans")
+}
+
+// Subscription Model - اشتراك الشركة
+model Subscription {
+  id            Int       @id @default(autoincrement())
+  companyId     Int       @unique @map("company_id")
+  planId        Int       @map("plan_id")
+  status        String    @default("trial") 
+  // trial, active, expired, cancelled, suspended, pending_payment
+  
+  startDate     DateTime  @default(now()) @map("start_date")
+  endDate       DateTime? @map("end_date")
+  trialEndDate  DateTime? @map("trial_end_date")
+  
+  // إدارة يدوية
+  notes         String?   // ملاحظات Admin
+  activatedBy   Int?      @map("activated_by") // Admin ID الذي فعّل الاشتراك
+  activatedAt   DateTime? @map("activated_at")
+  cancelledAt   DateTime? @map("cancelled_at")
+  
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan          Plan      @relation(fields: [planId], references: [id])
+  invoices      Invoice[]
+  
+  @@map("subscriptions")
+}
+
+// Invoice Model - الفواتير (بدون دفع أونلاين)
+model Invoice {
+  id              Int       @id @default(autoincrement())
+  subscriptionId  Int       @map("subscription_id")
+  companyId       Int       @map("company_id") // For easier queries
+  invoiceNumber   String    @unique @map("invoice_number") // INV-2025-001
+  amount          Float
+  currency        String    @default("AED")
+  status          String    @default("pending") 
+  // pending, paid, overdue, cancelled
+  
+  // معلومات الدفع اليدوي
+  paymentMethod   String?   @map("payment_method") // check, bank_transfer, cash
+  paymentReference String?  @map("payment_reference") // رقم الشيك أو التحويل
+  paidAt          DateTime? @map("paid_at")
+  dueDate         DateTime  @map("due_date")
+  
+  // معلومات إضافية
+  pdfUrl          String?   @map("pdf_url")
+  notes           String?
+  createdBy       Int?      @map("created_by") // Admin ID
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
+  company         Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@map("invoices")
+}
+
+// Usage Model - تتبع الاستخدام
+model Usage {
+  id            Int       @id @default(autoincrement())
+  companyId     Int       @map("company_id")
+  resourceType  String    @map("resource_type") // property, broker, lead, deal
+  count         Int       @default(0)
+  month         Int
+  year          Int
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId, resourceType, month, year])
+  @@map("usage")
+}
+
+// Notification Model - الإشعارات
+model Notification {
+  id          Int       @id @default(autoincrement())
+  userId      Int?      @map("user_id")
+  companyId   Int?      @map("company_id")
+  type        String    // subscription_expiring, limit_reached, invoice_created, deal_closed
+  title       String
+  message     String
+  isRead      Boolean   @default(false) @map("is_read")
+  actionUrl   String?   @map("action_url")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
 }
