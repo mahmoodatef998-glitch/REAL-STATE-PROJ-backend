@@ -6,12 +6,14 @@ const PORT = CONFIG.PORT;
 
 const startServer = async () => {
     try {
-        const server = app.listen(PORT, () => {
-            logger.info('✅ Server started successfully!');
-            logger.info(`🌐 Server running on port ${PORT}`);
-            logger.info(`📱 Frontend URL: ${CONFIG.FRONTEND_URL}`);
-            logger.info(`🔗 API URL: http://localhost:${PORT}`);
-            logger.info(`🌐 Health Check: http://localhost:${PORT}/api/health`);
+        const port = Number(process.env.PORT) || 3050;
+        const host = '0.0.0.0';
+
+        const server = app.listen(port, host, () => {
+            logger.info(`✅ Server for AL RABEI Real Estate started!`);
+            logger.info(`📌 Version: 1.0.1`);
+            logger.info(`🌐 Listening on: http://${host}:${port}`);
+            logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
         });
 
         // Handle server errors
