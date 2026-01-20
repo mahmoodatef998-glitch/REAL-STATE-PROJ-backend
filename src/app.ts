@@ -15,12 +15,23 @@ import subscriptionsRoutes from './routes/subscriptions';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 import cookieParser from 'cookie-parser';
 
+import cors from 'cors';
+
 // Initialize express app
 const app: Express = express();
 
-// 1. GLOBAL CORS - MUST BE FIRST (to handle CORS before Helmet/Rate Limit)
+// Root diagnostic route - MUST be before any other middleware
+app.get('/', (req, res) => {
+    res.json({
+        message: 'AL RABEI API is LIVE',
+        version: '1.0.1',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// 1. GLOBAL CORS - MUST BE FIRST
 const corsConfigValues = getCorsConfig();
-app.use(require('cors')(corsConfigValues));
+app.use(cors(corsConfigValues));
 app.use(corsMiddleware);
 
 // Apply other middleware
