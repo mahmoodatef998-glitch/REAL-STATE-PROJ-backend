@@ -103,6 +103,7 @@ function getCORSOrigins(): string[] {
 
     // Always include a few common patterns for your project to avoid lockouts
     origins.push('https://real-state-proj.vercel.app');
+    origins.push('https://al-rabei-real-estate.vercel.app');
 
     return [...new Set(origins)]; // Remove duplicates
 }
