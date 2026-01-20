@@ -18,14 +18,12 @@ import cookieParser from 'cookie-parser';
 // Initialize express app
 const app: Express = express();
 
-// Load CORS config
-const corsConfig = {
-    getCorsConfig,
-    corsMiddleware: require('./config/cors').corsMiddleware, // We might need to adjust this if we export properly
-    optionsHandler: require('./config/cors').optionsHandler
-}
+// 1. GLOBAL CORS - MUST BE FIRST (to handle CORS before Helmet/Rate Limit)
+const corsConfigValues = getCorsConfig();
+app.use(require('cors')(corsConfigValues));
+app.use(corsMiddleware);
 
-// Apply middleware
+// Apply other middleware
 applyMiddleware(app);
 
 // Additional middleware not covered in applyMiddleware (if any specific order needed)

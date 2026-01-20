@@ -99,11 +99,6 @@ export function applyMiddleware(app: Express) {
     app.use(configureHelmet());
     app.use(configureRateLimit());
 
-    // CORS
-    app.options('*', corsConfig.optionsHandler);
-    app.use(cors(corsConfig.getCorsConfig()));
-    app.use(corsConfig.corsMiddleware);
-
     // Body parsing
     configureBodyParser(app);
 
