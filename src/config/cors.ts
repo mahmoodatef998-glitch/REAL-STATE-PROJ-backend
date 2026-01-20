@@ -31,25 +31,39 @@ export function getCorsConfig() {
                 return callback(null, true);
             }
 
-            // In production, only allow configured frontend URL
-            if (CONFIG.isProduction) {
-                if (frontendUrl && origin.startsWith(frontendUrl)) {
-                    logger.info(`CORS allowed (production): ${origin}`);
-                    return callback(null, true);
-                }
-                logger.warn(`CORS blocked (production): ${origin}`);
-                return callback(new Error('Not allowed by CORS'));
-            }
+            // Clean common patterns
+            const cleanOrigin = origin.trim().replace(/\/$/, '');
+            const cleanFrontend = frontendUrl ? frontendUrl.trim().replace(/\/$/, '') : '';
 
-            // In development, allow dev origins or frontendUrl
-            if (devAllowed.includes(origin) || (frontendUrl && origin.startsWith(frontendUrl))) {
-                logger.debug(`CORS allowed (development): ${origin}`);
+            // 1. Check exact match or starts with (for sub-paths if misconfigured)
+            if (cleanFrontend && (cleanOrigin === cleanFrontend || cleanOrigin.startsWith(cleanFrontend))) {
+                logger.debug(`CORS allowed (exact/prefix): ${origin}`);
                 return callback(null, true);
             }
 
-            // Relax in development - allow all origins
-            logger.debug(`CORS allowed (dev mode - relaxed): ${origin}`);
-            return callback(null, true);
+            // 2. Allow localhost and common dev ports
+            const isLocal = cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1');
+            if (isLocal) {
+                logger.debug(`CORS allowed (local): ${origin}`);
+                return callback(null, true);
+            }
+
+            // 3. Allow Vercel preview deployments
+            // Pattern: real-state-proj-[random].vercel.app or similar
+            if (cleanOrigin.includes('vercel.app') && (cleanOrigin.includes('real-state') || cleanOrigin.includes('al-rabei'))) {
+                logger.info(`CORS allowed (Vercel preview): ${origin}`);
+                return callback(null, true);
+            }
+
+            // In development mode, be more permissive if none of the above matched
+            if (!CONFIG.isProduction) {
+                logger.debug(`CORS allowed (dev mode - permissive): ${origin}`);
+                return callback(null, true);
+            }
+
+            // If we're here and in production, block it
+            logger.warn(`CORS blocked (production): ${origin}`);
+            return callback(new Error('Not allowed by CORS'));
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
