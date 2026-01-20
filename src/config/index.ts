@@ -86,23 +86,25 @@ validateConfig();
  * Helper: Get CORS origins based on environment
  */
 function getCORSOrigins(): string[] {
+    const origins = [];
+
     if (process.env.CORS_ORIGINS) {
-        return process.env.CORS_ORIGINS.split(',').map(url => url.trim());
+        origins.push(...process.env.CORS_ORIGINS.split(',').map(url => url.trim()));
     }
 
-    // Default CORS origins
-    const defaultOrigins = [
-        process.env.FRONTEND_URL || 'http://localhost:3000',
-        'http://localhost:3000',
-        'http://localhost:3001',
-    ];
-
-    // In production, be stricter
-    if (isProduction) {
-        return [process.env.FRONTEND_URL || 'https://yourdomain.com'];
+    if (process.env.FRONTEND_URL) {
+        origins.push(process.env.FRONTEND_URL.trim());
     }
 
-    return defaultOrigins;
+    // Default development origins
+    if (!isProduction) {
+        origins.push('http://localhost:3000', 'http://localhost:3001');
+    }
+
+    // Always include a few common patterns for your project to avoid lockouts
+    origins.push('https://real-state-proj.vercel.app');
+
+    return [...new Set(origins)]; // Remove duplicates
 }
 
 export const CONFIG = {
