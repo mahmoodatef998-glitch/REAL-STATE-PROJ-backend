@@ -12,7 +12,7 @@ import companiesRoutes from './routes/companies';
 import usersRoutes from './routes/users';
 import reportsRoutes from './routes/reports';
 import subscriptionsRoutes from './routes/subscriptions';
-import { getCorsConfig } from './config/cors';
+import { getCorsConfig, corsMiddleware } from './config/cors';
 import cookieParser from 'cookie-parser';
 
 // Initialize express app
