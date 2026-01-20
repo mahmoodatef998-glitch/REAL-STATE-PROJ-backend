@@ -38,8 +38,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertiesRoutes);
 app.use('/api/deals', dealsRoutes);
 app.use('/api/leads', leadsRoutes);
-// We will add other routes here as we migrate them
-// ...
+app.use('/api/companies', companiesRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
 
 
 // Default images endpoint (migrated from start-server.js)

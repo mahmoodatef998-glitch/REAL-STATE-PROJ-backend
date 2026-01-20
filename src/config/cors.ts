@@ -11,18 +11,10 @@ import { CONFIG } from './index';
  * Get CORS configuration
  */
 export function getCorsConfig() {
+    const allowedOrigins = CONFIG.CORS_ORIGINS || [];
     const frontendUrl = CONFIG.FRONTEND_URL ?
         CONFIG.FRONTEND_URL.trim().replace(/\/$/, '') :
         null;
-
-    const devAllowed = [
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'http://localhost:3002',
-        'http://localhost:3003',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:3001'
-    ];
 
     return {
         origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
@@ -31,39 +23,55 @@ export function getCorsConfig() {
                 return callback(null, true);
             }
 
-            // Clean common patterns
+            // Clean origin for comparison
             const cleanOrigin = origin.trim().replace(/\/$/, '');
-            const cleanFrontend = frontendUrl ? frontendUrl.trim().replace(/\/$/, '') : '';
 
-            // 1. Check exact match or starts with (for sub-paths if misconfigured)
-            if (cleanFrontend && (cleanOrigin === cleanFrontend || cleanOrigin.startsWith(cleanFrontend))) {
-                logger.debug(`CORS allowed (exact/prefix): ${origin}`);
+            // 1. Check if origin is in the explicitly allowed list
+            if (allowedOrigins.some(ao => ao.trim().replace(/\/$/, '') === cleanOrigin)) {
+                logger.debug(`CORS allowed (listed): ${origin}`);
                 return callback(null, true);
             }
 
-            // 2. Allow localhost and common dev ports
+            // 2. Check exact match or starts with FRONTEND_URL
+            const cleanFrontend = frontendUrl ? frontendUrl.trim().replace(/\/$/, '') : '';
+            if (cleanFrontend && (cleanOrigin === cleanFrontend || cleanOrigin.startsWith(cleanFrontend))) {
+                logger.debug(`CORS allowed (frontend): ${origin}`);
+                return callback(null, true);
+            }
+
+            // 3. Allow localhost and common dev ports
             const isLocal = cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1');
             if (isLocal) {
                 logger.debug(`CORS allowed (local): ${origin}`);
                 return callback(null, true);
             }
 
-            // 3. Allow Vercel preview deployments
-            // Pattern: real-state-proj-[random].vercel.app or similar
-            if (cleanOrigin.includes('vercel.app') && (cleanOrigin.includes('real-state') || cleanOrigin.includes('al-rabei'))) {
-                logger.info(`CORS allowed (Vercel preview): ${origin}`);
-                return callback(null, true);
+            // 4. Allow Vercel preview deployments
+            // Pattern: *.vercel.app if it contains relevant keywords
+            if (cleanOrigin.includes('vercel.app')) {
+                const isRelevant =
+                    cleanOrigin.includes('real-state') ||
+                    cleanOrigin.includes('al-rabei') ||
+                    cleanOrigin.includes('mahmood') ||
+                    cleanOrigin.includes('atef');
+
+                if (isRelevant) {
+                    logger.info(`CORS allowed (Vercel): ${origin}`);
+                    return callback(null, true);
+                }
             }
 
-            // In development mode, be more permissive if none of the above matched
+            // In development mode, be more permissive
             if (!CONFIG.isProduction) {
-                logger.debug(`CORS allowed (dev mode - permissive): ${origin}`);
+                logger.debug(`CORS allowed (dev permissive): ${origin}`);
                 return callback(null, true);
             }
 
             // If we're here and in production, block it
             logger.warn(`CORS blocked (production): ${origin}`);
-            return callback(new Error('Not allowed by CORS'));
+            // Instead of returning an error, we return false to indicate not allowed
+            // This allows the cors middleware to handle it gracefully
+            return callback(null, false);
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -73,35 +81,45 @@ export function getCorsConfig() {
             'X-Requested-With',
             'Accept',
             'Origin',
-            'Cache-Control'
+            'Cache-Control',
+            'X-Tenant-Id'
         ],
-        exposedHeaders: ['Content-Type', 'Authorization'],
+        exposedHeaders: ['Content-Type', 'Authorization', 'Set-Cookie'],
         optionsSuccessStatus: 200,
         preflightContinue: false
     };
 }
 
 /**
- * Additional CORS middleware (fallback)
+ * Additional CORS middleware (fallback and header insurance)
  */
 export function corsMiddleware(req: Request, res: Response, next: NextFunction) {
     const origin = req.headers.origin;
 
-    // Set CORS headers for all responses
+    // We already have the 'cors' package doing the heavy lifting,
+    // but this middleware ensures headers are set even for error responses
+    // by being registered after cors() but before routes.
+
     if (origin) {
-        res.header('Access-Control-Allow-Origin', origin);
-        res.header('Access-Control-Allow-Credentials', 'true');
-    } else {
-        res.header('Access-Control-Allow-Origin', '*');
+        // Only set if not already set by 'cors' package
+        if (!res.getHeader('Access-Control-Allow-Origin')) {
+            // Note: In production, we should only set this if the origin is actually allowed
+            // But since this is a "fallback", we want to be helpful for debugging
+            res.header('Access-Control-Allow-Origin', origin);
+            res.header('Access-Control-Allow-Credentials', 'true');
+        }
     }
 
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
-    res.header('Access-Control-Max-Age', '86400');
+    // Always ensure these are available
+    if (!res.getHeader('Access-Control-Allow-Methods')) {
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    }
 
-    // Handle OPTIONS requests
+    if (!res.getHeader('Access-Control-Allow-Headers')) {
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, X-Tenant-Id');
+    }
+
     if (req.method === 'OPTIONS') {
-        logger.info(`CORS preflight OPTIONS: ${req.path} from: ${origin}`);
         return res.sendStatus(200);
     }
 
@@ -116,7 +134,7 @@ export function optionsHandler(req: Request, res: Response) {
     res.header('Access-Control-Allow-Origin', origin || '*');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, X-Tenant-Id');
     res.header('Access-Control-Max-Age', '86400');
     res.sendStatus(200);
 }

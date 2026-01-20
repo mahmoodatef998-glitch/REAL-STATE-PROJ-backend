@@ -14,7 +14,7 @@ import { Subscription } from '../models/Subscription';
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = path.join(__dirname, '../../../uploads');
+        const uploadDir = path.join(__dirname, '../../uploads');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
@@ -49,7 +49,7 @@ const runUpload = (fieldName: string, maxCount: number) => (req: Request, res: R
             try {
                 if ((req as any).files && (req as any).files.length) {
                     (req as any).files.forEach((f: any) => {
-                        const filePath = path.join(__dirname, '../../../uploads', f.filename);
+                        const filePath = path.join(__dirname, '../../uploads', f.filename);
                         try { fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
                     });
                 }

@@ -64,7 +64,7 @@ export function configureStaticFiles(app: Express) {
         next();
     });
 
-    app.use('/uploads', express.static(path.join(__dirname, '../../../uploads'), {
+    app.use('/uploads', express.static(path.join(__dirname, '../../uploads'), {
         setHeaders: (res, filePath) => {
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
             res.setHeader('Access-Control-Allow-Origin', '*');

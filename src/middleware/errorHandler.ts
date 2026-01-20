@@ -12,6 +12,13 @@ import { CONFIG } from '../config';
  * Main error handler middleware
  */
 export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+    // Ensure CORS headers are present even for error responses
+    const origin = req.headers.origin;
+    if (origin) {
+        res.header('Access-Control-Allow-Origin', origin as string);
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
+
     // Log the error
     logger.error('Error Handler Caught', {
         name: err.name,
@@ -110,6 +117,13 @@ export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunctio
  * 404 Not Found handler
  */
 export const notFoundHandler = (req: Request, res: Response) => {
+    // Ensure CORS headers for 404s
+    const origin = req.headers.origin;
+    if (origin) {
+        res.header('Access-Control-Allow-Origin', origin as string);
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
+
     res.status(404).json({
         success: false,
         error: 'Route not found',
