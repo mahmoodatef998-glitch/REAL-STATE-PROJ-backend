@@ -37,6 +37,19 @@ app.use(corsMiddleware);
 // Apply other middleware
 applyMiddleware(app);
 
+// API Prefix Fallback Middleware
+// If a request starts with common API routes but misses /api, redirect/rewrite it
+app.use((req, res, next) => {
+    const commonRoutes = ['/properties', '/auth', '/deals', '/leads', '/companies', '/users', '/reports', '/subscriptions', '/health'];
+    const matchingRoute = commonRoutes.find(route => req.url.startsWith(route));
+
+    if (matchingRoute && !req.url.startsWith('/api/')) {
+        console.log(`[Path Correction] Redirecting ${req.url} to /api${req.url}`);
+        req.url = `/api${req.url}`;
+    }
+    next();
+});
+
 // Additional middleware not covered in applyMiddleware (if any specific order needed)
 app.use(cookieParser());
 
