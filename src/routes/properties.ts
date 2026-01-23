@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { cloudinaryStorage } from '../config/cloudinary';
 import { Property } from '../models/Property';
 import { authenticateToken, requireRole } from '../middleware/auth';
 import {
@@ -12,24 +13,10 @@ import { tenantIsolation, checkTenantAccess } from '../middleware/tenantIsolatio
 import { UsageService } from '../services/usageService';
 import { Subscription } from '../models/Subscription';
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = path.join(__dirname, '../../uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + file.originalname.replace(/\s+/g, '_'));
-    }
-});
-
-// File upload middleware: add size limits and file type filtering
+// File upload middleware using Cloudinary
 const upload = multer({
-    storage,
-    limits: { fileSize: 5 * 1024 * 1024, files: 20 }, // 5MB per file, up to 20 files
+    storage: cloudinaryStorage,
+    limits: { fileSize: 10 * 1024 * 1024, files: 20 }, // 10MB per file, up to 20 files
     fileFilter: function (req, file, cb) {
         const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if (allowed.includes(file.mimetype)) {
@@ -40,22 +27,11 @@ const upload = multer({
     }
 });
 
-// Wrapper to run multer and handle errors + cleanup of partially uploaded files
+// Wrapper to run multer and handle errors
 const runUpload = (fieldName: string, maxCount: number) => (req: Request, res: Response, next: NextFunction) => {
     const handler = upload.array(fieldName, maxCount);
     handler(req, res, (err: any) => {
         if (err) {
-            // Cleanup any uploaded files if an error occurred
-            try {
-                if ((req as any).files && (req as any).files.length) {
-                    (req as any).files.forEach((f: any) => {
-                        const filePath = path.join(__dirname, '../../uploads', f.filename);
-                        try { fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
-                    });
-                }
-            } catch (cleanupErr) {
-                console.error('Upload cleanup error:', cleanupErr);
-            }
             return next(err);
         }
         next();
@@ -151,8 +127,7 @@ router.post('/', authenticateToken, requireRole(['admin', 'broker']), tenantIsol
         }
 
         const files = (req as any).files || [];
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
-        const images = files.map((file: any) => `${baseUrl}/uploads/${file.filename}`);
+        const images = files.map((file: any) => file.path); // Cloudinary provides the full URL in file.path
         const {
             title, description, type, purpose, price, area_sqft,
             bedrooms, bathrooms, emirate, location, features
@@ -220,7 +195,6 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'broker']), tenantIs
         }
 
         const files = (req as any).files || [];
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
 
         const {
             title, description, type, purpose, price, area_sqft,
@@ -254,7 +228,7 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'broker']), tenantIs
 
         // If new files uploaded, add them
         if (files.length > 0) {
-            const newImageUrls = files.map((file: any) => `${baseUrl}/uploads/${file.filename}`);
+            const newImageUrls = files.map((file: any) => file.path); // Cloudinary URL
             images = [...existingImageArray, ...newImageUrls];
         } else if (existingImageArray.length > 0) {
             // Only update existing images if provided
