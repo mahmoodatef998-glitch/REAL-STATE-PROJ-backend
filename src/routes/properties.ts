@@ -130,7 +130,7 @@ router.post('/', authenticateToken, requireRole(['admin', 'broker']), tenantIsol
         const images = files.map((file: any) => file.path); // Cloudinary provides the full URL in file.path
         const {
             title, description, type, purpose, price, area_sqft,
-            bedrooms, bathrooms, emirate, location, features
+            bedrooms, bathrooms, emirate, location, features, status
         } = req.body;
 
         // If JSON string, parse features
@@ -138,19 +138,26 @@ router.post('/', authenticateToken, requireRole(['admin', 'broker']), tenantIsol
         if (typeof features === 'string') {
             try { parsedFeatures = JSON.parse(features); } catch { parsedFeatures = features.split(',').map((f: string) => f.trim()).filter(Boolean); }
         }
+        const parseSafeInt = (val: any) => {
+            if (val === undefined || val === null || val === '') return undefined;
+            const parsed = parseInt(val);
+            return isNaN(parsed) ? undefined : parsed;
+        };
+
         const propertyData = {
             title: title,
             description: description,
             type: type,
             purpose: purpose,
-            price: parseInt(price),
-            area_sqft: area_sqft ? parseInt(area_sqft) : undefined,
-            bedrooms: bedrooms ? parseInt(bedrooms) : undefined,
-            bathrooms: bathrooms ? parseInt(bathrooms) : undefined,
+            price: parseSafeInt(price) || 0,
+            area_sqft: parseSafeInt(area_sqft),
+            bedrooms: parseSafeInt(bedrooms),
+            bathrooms: parseSafeInt(bathrooms),
             emirate: emirate,
             location: location,
             images: images,
             features: parsedFeatures,
+            status: status || 'active',
             owner_id: req.user!.id,
             company_id: req.user!.companyId // Add company ID for tenant isolation
         };
@@ -208,9 +215,6 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'broker']), tenantIs
             try { parsedFeatures = JSON.parse(features); } catch { parsedFeatures = features.split(',').map((f: string) => f.trim()).filter(Boolean); }
         }
 
-        // Handle images: combine existing and new
-        let images = property.images || [];
-
         // Parse existingImages if provided (can be string or array)
         let existingImageArray: string[] = [];
         if (existingImages) {
@@ -226,33 +230,54 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'broker']), tenantIs
             }
         }
 
-        // If new files uploaded, add them
-        if (files.length > 0) {
-            const newImageUrls = files.map((file: any) => file.path); // Cloudinary URL
+        let images: string[] = [];
+        // If existingImages was provided as a field in req.body, use it (even if empty)
+        // Combined with any new files
+        const newImageUrls = files.map((file: any) => file.path); // Cloudinary URL
+
+        if (existingImages !== undefined) {
             images = [...existingImageArray, ...newImageUrls];
-        } else if (existingImageArray.length > 0) {
-            // Only update existing images if provided
-            images = existingImageArray;
+        } else if (files.length > 0) {
+            // No existingImages field, but new files uploaded - append to original
+            images = [...(property.images || []), ...newImageUrls];
+        } else {
+            // Nothing provided regarding images, keep original
+            images = property.images || [];
         }
-        // Otherwise keep current images as strictly typed string array if possible, or mixed
+
+        const parseSafeInt = (val: any) => {
+            if (val === undefined || val === null || val === '') return undefined;
+            const parsed = parseInt(val);
+            return isNaN(parsed) ? undefined : parsed;
+        };
 
         const updateData: any = {};
         if (title) updateData.title = title;
         if (description !== undefined) updateData.description = description;
         if (type) updateData.type = type;
         if (purpose) updateData.purpose = purpose;
-        if (price) updateData.price = parseInt(price);
-        if (area_sqft) updateData.area_sqft = parseInt(area_sqft);
-        if (bedrooms) updateData.bedrooms = parseInt(bedrooms);
-        if (bathrooms) updateData.bathrooms = parseInt(bathrooms);
+
+        const priceVal = parseSafeInt(price);
+        if (priceVal !== undefined) updateData.price = priceVal;
+
+        const areaVal = parseSafeInt(area_sqft);
+        if (areaVal !== undefined) updateData.area_sqft = areaVal;
+
+        const bedVal = parseSafeInt(bedrooms);
+        if (bedVal !== undefined) updateData.bedrooms = bedVal;
+
+        const bathVal = parseSafeInt(bathrooms);
+        if (bathVal !== undefined) updateData.bathrooms = bathVal;
+
         if (emirate) updateData.emirate = emirate;
         if (location !== undefined) updateData.location = location;
-        if (images) updateData.images = images;
+        updateData.images = images;
         if (parsedFeatures) updateData.features = parsedFeatures;
+
         // Allow both admin and property owner (broker) to update status
         if (status) {
             // Validate status value
-            const validStatuses = ['active', 'closed', 'sold', 'rented'];
+            const validStatuses = ['active', 'closed', 'sold', 'rented', 'deleted'];
             if (validStatuses.includes(status)) {
                 updateData.status = status;
             }

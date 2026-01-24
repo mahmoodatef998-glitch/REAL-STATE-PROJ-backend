@@ -4,11 +4,11 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 بدء إضافة البيانات التجريبية...\n');
+  console.log('🌱 Starting seed data insertion...\n');
 
   try {
-    // 1️⃣ حذف البيانات القديمة
-    console.log('🗑️  حذف البيانات القديمة...');
+    // 1️⃣ Delete old data
+    console.log('🗑️  Deleting old data...');
     await prisma.lead.deleteMany();
     await prisma.property.deleteMany();
     await prisma.agent.deleteMany();
@@ -18,16 +18,16 @@ async function main() {
     await prisma.usage.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.plan.deleteMany();
-    console.log('✅ تم حذف البيانات القديمة\n');
+    console.log('✅ Old data deleted\n');
 
-    // 1.5️⃣ إنشاء الخطط (Plans)
-    console.log('📦 إنشاء الخطط...');
+    // 1.5️⃣ Create Plans
+    console.log('📦 Creating Plans...');
     const plans = await prisma.plan.createMany({
       data: [
         {
           name: 'free',
           displayName: 'Free',
-          description: 'خطة مجانية للبدء',
+          description: 'Free plan to get started',
           price: 0,
           currency: 'AED',
           propertiesLimit: 10,
@@ -41,7 +41,7 @@ async function main() {
         {
           name: 'basic',
           displayName: 'Basic',
-          description: 'خطة أساسية للشركات الصغيرة',
+          description: 'Basic plan for small companies',
           price: 299,
           currency: 'AED',
           propertiesLimit: 100,
@@ -55,7 +55,7 @@ async function main() {
         {
           name: 'premium',
           displayName: 'Premium',
-          description: 'خطة متقدمة للشركات المتوسطة',
+          description: 'Advanced plan for medium companies',
           price: 799,
           currency: 'AED',
           propertiesLimit: 500,
@@ -69,7 +69,7 @@ async function main() {
         {
           name: 'enterprise',
           displayName: 'Enterprise',
-          description: 'خطة شاملة للشركات الكبيرة',
+          description: 'Comprehensive plan for large companies',
           price: 1999,
           currency: 'AED',
           propertiesLimit: null, // Unlimited
@@ -82,10 +82,10 @@ async function main() {
         }
       ]
     });
-    console.log(`✅ تم إنشاء ${plans.count} خطط\n`);
+    console.log(`✅ Created ${plans.count} plans\n`);
 
-    // 2️⃣ إنشاء مستخدمين
-    console.log('👤 إنشاء مستخدمين...');
+    // 2️⃣ Create Users
+    console.log('👤 Creating users...');
     const hashedPassword = await bcrypt.hash('Test123!@#', 10);
 
     const admin = await prisma.user.create({
@@ -102,7 +102,7 @@ async function main() {
 
     const broker = await prisma.user.create({
       data: {
-        name: 'أحمد الوسيط',
+        name: 'Ahmed Broker',
         email: 'broker@test.com',
         password: hashedPassword,
         role: 'broker',
@@ -114,7 +114,7 @@ async function main() {
 
     const user = await prisma.user.create({
       data: {
-        name: 'محمد العميل',
+        name: 'Mohammed Client',
         email: 'client@test.com',
         password: hashedPassword,
         role: 'client',
@@ -124,15 +124,15 @@ async function main() {
       },
     });
 
-    console.log('✅ تم إنشاء 3 مستخدمين\n');
+    console.log('✅ Created 3 users\n');
 
-    // 3️⃣ إنشاء عقارات
-    console.log('🏠 إنشاء عقارات...');
+    // 3️⃣ Create Properties
+    console.log('🏠 Creating properties...');
     const properties = await prisma.property.createMany({
       data: [
         {
-          title: 'فيلا فاخرة في الإمارات',
-          description: 'فيلا حديثة بتصميم عصري مع حمام سباحة',
+          title: 'Luxury Villa in UAE',
+          description: 'Modern villa with contemporary design and swimming pool',
           type: 'villa',
           purpose: 'sale',
           price: 2500000,
@@ -143,12 +143,12 @@ async function main() {
           location: 'Palm Jumeirah',
           status: 'active',
           ownerId: broker.id,
-          features: JSON.stringify(['مسبح', 'حديقة', 'جراج', 'مطبخ حديث']),
+          features: JSON.stringify(['Pool', 'Garden', 'Garage', 'Modern Kitchen']),
           images: JSON.stringify(['/villa-1.svg']),
         },
         {
-          title: 'شقة فاخرة في دبي',
-          description: 'شقة بإطلالة على البحر',
+          title: 'Luxury Apartment in Dubai',
+          description: 'Apartment with sea view',
           type: 'apartment',
           purpose: 'sale',
           price: 1200000,
@@ -159,12 +159,12 @@ async function main() {
           location: 'Downtown Dubai',
           status: 'active',
           ownerId: broker.id,
-          features: JSON.stringify(['مصعد', 'موقف سيارات', 'نادي رياضي']),
+          features: JSON.stringify(['Elevator', 'Parking', 'Gym']),
           images: JSON.stringify(['/villa-1.svg']),
         },
         {
-          title: 'مكتب تجاري في الشارقة',
-          description: 'مكتب بموقع متميز',
+          title: 'Commercial Office in Sharjah',
+          description: 'Office in a prime location',
           type: 'office',
           purpose: 'sale',
           price: 800000,
@@ -175,12 +175,12 @@ async function main() {
           location: 'Al Qasba',
           status: 'active',
           ownerId: broker.id,
-          features: JSON.stringify(['مكيفات', 'انترنت', 'استقبال']),
+          features: JSON.stringify(['AC', 'Internet', 'Reception']),
           images: JSON.stringify(['/villa-1.svg']),
         },
         {
-          title: 'ارض سكنية في أبوظبي',
-          description: 'ارض بموقع استراتيجي',
+          title: 'Residential Land in Abu Dhabi',
+          description: 'Land in a strategic location',
           type: 'land',
           purpose: 'sale',
           price: 1500000,
@@ -191,12 +191,12 @@ async function main() {
           location: 'Al Reef',
           status: 'active',
           ownerId: broker.id,
-          features: JSON.stringify(['سهل الوصول', 'قرب الخدمات']),
+          features: JSON.stringify(['Easy Access', 'Close to Services']),
           images: JSON.stringify(['/villa-1.svg']),
         },
         {
-          title: 'محل تجاري في العين',
-          description: 'محل بسعر مميز',
+          title: 'Commercial Shop in Al Ain',
+          description: 'Shop at a special price',
           type: 'commercial',
           purpose: 'sale',
           price: 500000,
@@ -207,12 +207,12 @@ async function main() {
           location: 'City Center',
           status: 'active',
           ownerId: broker.id,
-          features: JSON.stringify(['واجهة رئيسية', 'تصريح تجاري']),
+          features: JSON.stringify(['Main Facade', 'Commercial Permit']),
           images: JSON.stringify(['/villa-1.svg']),
         },
         {
-          title: 'شقة استثمارية بعائد 7%',
-          description: 'شقة مفروشة للايجار اليومي',
+          title: 'Investment Apartment with 7% ROI',
+          description: 'Furnished apartment for daily rent',
           type: 'apartment',
           purpose: 'rent',
           price: 650000,
@@ -223,91 +223,91 @@ async function main() {
           location: 'Marina',
           status: 'active',
           ownerId: broker.id,
-          features: JSON.stringify(['مفروشة', 'فرن بيتزا', 'شرفة']),
+          features: JSON.stringify(['Furnished', 'Pizza Oven', 'Balcony']),
           images: JSON.stringify(['/villa-1.svg']),
         },
       ],
     });
 
-    console.log(`✅ تم إنشاء ${properties.count} عقارات\n`);
+    console.log(`✅ Created ${properties.count} properties\n`);
 
-    // 4️⃣ إنشاء عملاء (Leads)
-    console.log('📞 إنشاء عملاء مهتمين...');
+    // 4️⃣ Create Leads
+    console.log('📞 Creating interested leads...');
     await prisma.lead.createMany({
       data: [
         {
-          name: 'علي محمد',
+          name: 'Ali Mohammed',
           email: 'ali@example.com',
           phone: '+971505555555',
-          message: 'أبحث عن فيلا فاخرة في دبي',
+          message: 'Looking for a luxury villa in Dubai',
           status: 'new',
           brokerId: broker.id,
         },
         {
-          name: 'فاطمة أحمد',
+          name: 'Fatima Ahmed',
           email: 'fatima@example.com',
           phone: '+971506666666',
-          message: 'مهتمة بشقة قريبة من الجامعة',
+          message: 'Interested in an apartment near the university',
           status: 'contacted',
           brokerId: broker.id,
         },
         {
-          name: 'عمر سالم',
+          name: 'Omar Salem',
           email: 'omar@example.com',
           phone: '+971507777777',
-          message: 'أبحث عن مكتب تجاري',
+          message: 'Looking for a commercial office',
           status: 'interested',
           brokerId: broker.id,
         },
         {
-          name: 'نور خليفة',
+          name: 'Noor Khalifa',
           email: 'noor@example.com',
           phone: '+971508888888',
-          message: 'مهتمة بأرض سكنية',
+          message: 'Interested in residential land',
           status: 'new',
           brokerId: broker.id,
         },
       ],
     });
 
-    console.log('✅ تم إنشاء 4 عملاء\n');
+    console.log('✅ Created 4 leads\n');
 
-    // 5️⃣ إنشاء وكيل (Agent)
-    console.log('👨‍💼 إنشاء وكيل عقارات...');
+    // 5️⃣ Create Agent
+    console.log('👨‍💼 Creating real estate agent...');
     await prisma.agent.create({
       data: {
         userId: broker.id,
-        specialization: 'الفلل والعقارات الفاخرة',
+        specialization: 'Villas and Luxury Real Estate',
         experienceYears: 8,
-        bio: 'متخصص في العقارات الفاخرة مع خبرة 8 سنوات',
+        bio: 'Specialist in luxury real estate with 8 years of experience',
         linkedinUrl: 'https://linkedin.com/in/broker',
         instagramUrl: 'https://instagram.com/broker',
       },
     });
 
-    console.log('✅ تم إنشاء وكيل عقارات\n');
+    console.log('✅ Created 1 real estate agent\n');
 
-    // النتيجة النهائية
+    // Final result
     console.log('═════════════════════════════════════════');
-    console.log('✅ تمت إضافة جميع البيانات التجريبية بنجاح!');
+    console.log('✅ All seed data added successfully!');
     console.log('═════════════════════════════════════════\n');
 
-    console.log('📊 البيانات المضافة:');
-    console.log(`   👤 المستخدمون: 3 (Admin, Broker, Client)`);
-    console.log(`   🏠 العقارات: 6`);
-    console.log(`   📞 العملاء: 4`);
-    console.log(`   👨‍💼 الوكلاء: 1\n`);
+    console.log('📊 Added Data:');
+    console.log(`   👤 Users: 3 (Admin, Broker, Client)`);
+    console.log(`   🏠 Properties: 6`);
+    console.log(`   📞 Leads: 4`);
+    console.log(`   👨‍💼 Agents: 1\n`);
 
-    console.log('🔑 بيانات الدخول:');
-    console.log(`   📧 البريد: admin@test.com`);
-    console.log(`   🔐 كلمة السر: Test123!@#\n`);
+    console.log('🔑 Login Details:');
+    console.log(`   📧 Email: admin@test.com`);
+    console.log(`   🔐 Password: Test123!@#\n`);
 
-    console.log('أو استخدم:\n');
-    console.log(`   📧 البريد: broker@test.com`);
-    console.log(`   🔐 كلمة السر: Test123!@#\n`);
+    console.log('Or use:\n');
+    console.log(`   📧 Email: broker@test.com`);
+    console.log(`   🔐 Password: Test123!@#\n`);
 
   } catch (error) {
-    console.error('❌ حدث خطأ:', error);
+    console.error('❌ Error occurred:', error);
     process.exit(1);
   } finally {
     await prisma.$disconnect();

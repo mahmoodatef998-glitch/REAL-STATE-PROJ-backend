@@ -88,7 +88,7 @@ export class Property {
                 features: Property.serializeArray(propertyData.features),
                 ownerId: propertyData.owner_id != null ? Number(propertyData.owner_id) : null,
                 companyId: propertyData.company_id != null ? Number(propertyData.company_id) : null,
-                status: 'active',
+                status: propertyData.status || 'active',
             },
             include: {
                 owner: {

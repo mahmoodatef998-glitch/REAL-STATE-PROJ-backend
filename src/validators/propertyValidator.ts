@@ -4,72 +4,61 @@ import { Request, Response, NextFunction } from 'express';
 // Property creation/update validation rules
 export const validateProperty = [
     body('title')
+        .optional({ checkFalsy: true })
         .trim()
-        .notEmpty().withMessage('Title is required')
-        .isLength({ min: 5, max: 200 }).withMessage('Title must be between 5 and 200 characters'),
+        .isLength({ min: 1, max: 200 }).withMessage('Title must be between 1 and 200 characters'),
 
     body('description')
-        .optional()
+        .optional({ checkFalsy: true })
         .trim()
-        .isLength({ max: 5000 }).withMessage('Description is too long'),
+        .isLength({ max: 10000 }).withMessage('Description is too long'),
 
     body('type')
-        .notEmpty().withMessage('Property type is required')
-        .isIn(['villa', 'apartment', 'commercial', 'office', 'land']).withMessage('Invalid property type'),
+        .optional({ checkFalsy: true }),
 
     body('purpose')
-        .notEmpty().withMessage('Purpose is required')
-        .isIn(['sale', 'rent']).withMessage('Purpose must be either sale or rent'),
+        .optional({ checkFalsy: true }),
 
     body('price')
-        .notEmpty().withMessage('Price is required')
-        .isFloat({ min: 1 }).withMessage('Price must be a positive number'),
+        .optional({ checkFalsy: true }),
 
     body('area_sqft')
-        .notEmpty().withMessage('Area is required')
-        .isInt({ min: 1 }).withMessage('Area must be a positive integer'),
+        .optional({ checkFalsy: true }),
 
     body('bedrooms')
-        .optional()
-        .isInt({ min: 0, max: 50 }).withMessage('Bedrooms must be between 0 and 50'),
+        .optional({ checkFalsy: true }),
 
     body('bathrooms')
-        .optional()
-        .isInt({ min: 0, max: 50 }).withMessage('Bathrooms must be between 0 and 50'),
+        .optional({ checkFalsy: true }),
 
     body('emirate')
-        .trim()
-        .notEmpty().withMessage('Emirate is required')
-        .isLength({ min: 2, max: 50 }).withMessage('Emirate name is invalid'),
+        .optional({ checkFalsy: true })
+        .trim(),
 
     body('location')
-        .optional()
-        .trim()
-        .isLength({ max: 200 }).withMessage('Location is too long'),
+        .optional({ checkFalsy: true })
+        .trim(),
 
     body('images')
-        .optional()
-        .isArray().withMessage('Images must be an array')
-        .custom((images: any) => {
-            if (Array.isArray(images) && images.length > 20) {
-                throw new Error('Maximum 20 images allowed');
-            }
-            return true;
-        }),
+        .optional({ checkFalsy: true }),
 
     body('features')
-        .optional()
-        .isArray().withMessage('Features must be an array'),
+        .optional({ checkFalsy: true }),
 
     body('status')
-        .optional()
-        .isIn(['available', 'sold', 'rented']).withMessage('Invalid status'),
+        .optional({ checkFalsy: true }),
 ];
 
 // Validation result handler
 export const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+        console.warn(`Validation failed for ${req.method} ${req.url}:`, {
+            errors: errors.array(),
+            body: req.body,
+            files: req.files ? (req.files as any[]).length : 0
+        });
+
         return res.status(400).json({
             success: false,
             error: 'Validation failed',
