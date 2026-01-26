@@ -12,6 +12,7 @@ import companiesRoutes from './routes/companies';
 import usersRoutes from './routes/users';
 import reportsRoutes from './routes/reports';
 import subscriptionsRoutes from './routes/subscriptions';
+import activitiesRoutes from './routes/activities';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 import cookieParser from 'cookie-parser';
 
@@ -40,7 +41,7 @@ applyMiddleware(app);
 // API Prefix Fallback Middleware
 // If a request starts with common API routes but misses /api, redirect/rewrite it
 app.use((req, res, next) => {
-    const commonRoutes = ['/properties', '/auth', '/deals', '/leads', '/companies', '/users', '/reports', '/subscriptions', '/health'];
+    const commonRoutes = ['/properties', '/auth', '/deals', '/leads', '/companies', '/users', '/reports', '/subscriptions', '/health', '/activities'];
     const matchingRoute = commonRoutes.find(route => req.url.startsWith(route));
 
     if (matchingRoute && !req.url.startsWith('/api/')) {
@@ -64,6 +65,7 @@ app.use('/api/companies', companiesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/activities', activitiesRoutes);
 
 
 // Default images endpoint (migrated from start-server.js)

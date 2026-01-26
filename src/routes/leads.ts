@@ -81,7 +81,7 @@ router.get('/:id', authenticateToken, requireRole(['admin', 'broker']), async (r
 // Create new lead (public endpoint)
 router.post('/', async (req: Request, res: Response) => {
     try {
-        const { name, phone, email, message, property_id } = req.body;
+        const { name, phone, email, message, property_id, guest_id } = req.body;
 
         // Validate required fields
         if (!name || (!phone && !email)) {
@@ -93,6 +93,7 @@ router.post('/', async (req: Request, res: Response) => {
             phone: phone || '',
             email: email || '',
             message: message || '',
+            guest_id: guest_id || null,
             status: 'new'
         };
 
