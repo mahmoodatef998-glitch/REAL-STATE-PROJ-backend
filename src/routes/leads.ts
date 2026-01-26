@@ -81,52 +81,43 @@ router.get('/:id', authenticateToken, requireRole(['admin', 'broker']), async (r
 // Create new lead (public endpoint)
 router.post('/', async (req: Request, res: Response) => {
     try {
-        const { name, phone, property_id } = req.body;
+        const { name, phone, email, message, property_id } = req.body;
 
         // Validate required fields
-        if (!name || !phone) {
-            return res.status(400).json({ error: 'Name and phone are required' });
+        if (!name || (!phone && !email)) {
+            return res.status(400).json({ error: 'Name and either phone or email are required' });
         }
 
-        // Validate property exists and get broker info
-        if (!property_id) {
-            return res.status(400).json({ error: 'Property ID is required' });
-        }
-
-        const property = await Property.findById(property_id);
-        if (!property) {
-            return res.status(404).json({ error: 'Property not found' });
-        }
-
-        // Get broker (owner) info - must have an owner who is broker or admin
-        // Note: property.owner needs to be populated/included in findById
-        if (!property.owner || !['broker', 'admin'].includes((property.owner as any).role)) {
-            return res.status(400).json({ error: 'Property must have a valid broker' });
-        }
-
-        const leadData = {
+        let leadData: any = {
             name,
-            phone,
-            email: '', // Optional for this flow
-            message: `Interested in property: ${property.title}`,
-            property_id,
-            broker_id: (property.owner as any).id,
-            company_id: (property.owner as any).companyId || null,
+            phone: phone || '',
+            email: email || '',
+            message: message || '',
             status: 'new'
         };
+
+        if (property_id) {
+            const property = await Property.findById(property_id);
+            if (!property) {
+                return res.status(404).json({ error: 'Property not found' });
+            }
+
+            if (property.owner) {
+                leadData.broker_id = (property.owner as any).id;
+                leadData.company_id = (property.owner as any).companyId || null;
+            }
+            leadData.property_id = property_id;
+            if (!message) {
+                leadData.message = `Interested in property: ${property.title}`;
+            }
+        }
 
         const lead = await Lead.create(leadData);
 
         res.status(201).json({
             success: true,
-            message: 'Your interest has been recorded successfully! The broker will contact you soon.',
-            lead: {
-                id: lead.id,
-                name: lead.name,
-                phone: lead.phone,
-                property: lead.property,
-                broker: lead.broker
-            }
+            message: 'Your message has been received! We will contact you soon.',
+            lead
         });
     } catch (error) {
         console.error('Create lead error:', error);
