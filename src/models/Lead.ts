@@ -9,6 +9,7 @@ export class Lead {
     message: string | null;
     property_id: number | null; // Mapped to propertyId
     broker_id: number | null;   // Mapped to brokerId
+    company_id: number | null;  // Mapped to companyId
     guestId: string | null;
     isBehavioral: boolean;
     status: string;
