@@ -22,8 +22,8 @@ async function issueRefreshToken(res: Response, userId: number) {
 
     res.cookie('refreshToken', token, {
         httpOnly: true,
-        secure: CONFIG.isProduction, // false in dev, true in production
-        sameSite: 'lax',
+        secure: true, // Always true for cross-site cookies in modern browsers
+        sameSite: 'none', // Required for cross-site cookies
         maxAge: 30 * 24 * 60 * 60 * 1000,
         path: '/'
     });
@@ -325,8 +325,8 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
 
         res.cookie('refreshToken', newRefresh, {
             httpOnly: true,
-            secure: CONFIG.isProduction,
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
             maxAge: 30 * 24 * 60 * 60 * 1000,
             path: '/'
         });

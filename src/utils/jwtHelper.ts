@@ -40,7 +40,7 @@ export function getJWTSecret(): string {
 
         // Development fallback
         console.warn('⚠️  WARNING: JWT_SECRET not found. Using development fallback.');
-        secret = `DEV-FALLBACK-SECRET-${Date.now()}-DO-NOT-USE-IN-PRODUCTION`;
+        secret = `DEV-FALLBACK-SECRET-STAY-CONSISTENT-DO-NOT-USE-IN-PRODUCTION`;
     }
 
     // Validate secret length
@@ -65,7 +65,7 @@ export function clearCache() {
 export function generateAccessToken(user: { id: number; email: string; role: string }) {
     const secret = getJWTSecret();
     const payload = { id: user.id, email: user.email, role: user.role };
-    return jwt.sign(payload, secret, { expiresIn: '15m' });
+    return jwt.sign(payload, secret, { expiresIn: '1h' });
 }
 
 export function verifyAccessToken(token: string) {

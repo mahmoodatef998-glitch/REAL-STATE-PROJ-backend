@@ -30,6 +30,41 @@ router.get('/', authenticateToken, async (req: Request, res: Response, next: Nex
     }
 });
 
+// Create user (admin only)
+router.post('/', authenticateToken, requireRole(['admin']), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { name, email, password, role, phone, whatsapp, status } = req.body;
+
+        // Check if user already exists
+        const existingUser = await User.findByEmail(email);
+        if (existingUser) {
+            return res.status(400).json({ error: 'User already exists with this email' });
+        }
+
+        if (!password) {
+            return res.status(400).json({ error: 'Password is required' });
+        }
+
+        const user = await User.create({
+            name,
+            email,
+            password,
+            role: role || 'client',
+            status: status || 'approved',
+            phone,
+            whatsapp
+        });
+
+        res.status(201).json({
+            message: 'User created successfully',
+            user: user.toJSON()
+        });
+    } catch (error) {
+        console.error('Create user error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Get pending brokers (admin only) - MUST BE BEFORE /:id
 router.get('/pending/brokers', authenticateToken, requireRole(['admin']), async (req: Request, res: Response, next: NextFunction) => {
     try {

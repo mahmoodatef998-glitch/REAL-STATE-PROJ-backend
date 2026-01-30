@@ -27,7 +27,8 @@ export function getCorsConfig() {
             'Origin',
             'Cache-Control',
             'X-Tenant-Id',
-            'X-App-Version'
+            'X-App-Version',
+            'Cookie'
         ],
         exposedHeaders: ['Content-Type', 'Authorization', 'Set-Cookie', 'X-Backend-Version'],
         optionsSuccessStatus: 200,
