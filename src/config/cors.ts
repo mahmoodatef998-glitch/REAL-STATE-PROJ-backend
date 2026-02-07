@@ -11,10 +11,25 @@ import { CONFIG } from './index';
  * Get CORS configuration
  */
 export function getCorsConfig() {
+    const allowedOrigins = CONFIG.CORS_ORIGINS;
+
     return {
         origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-            // In development OR for debugging production CORS issues, allow everything
-            // We can restrict this later once we've confirmed the deployment is working
+            // If no origin (like mobile apps or curl requests), allow it
+            if (!origin) return callback(null, true);
+
+            // If origin is in our allowed list, allow it
+            if (allowedOrigins.indexOf(origin as string) !== -1 || !CONFIG.isProduction) {
+                return callback(null, true);
+            }
+
+            // Fallback: allow known vercel domains (for previews)
+            if (origin.endsWith('.vercel.app') || origin.includes('railway.app')) {
+                return callback(null, true);
+            }
+
+            // For now, in production, let's still allow everything to debug the error
+            // We can restrict this later
             callback(null, true);
         },
         credentials: true,
@@ -48,15 +63,13 @@ export function corsMiddleware(req: Request, res: Response, next: NextFunction) 
     if (origin) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', '*');
     }
 
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, X-Tenant-Id, X-App-Version');
-    res.setHeader('Access-Control-Max-Age', '86400');
-
+    // Handle preflight
     if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+        res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, X-Tenant-Id, X-App-Version');
+        res.setHeader('Access-Control-Max-Age', '86400');
         return res.sendStatus(200);
     }
 

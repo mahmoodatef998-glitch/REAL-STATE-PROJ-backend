@@ -21,22 +21,24 @@ import cors from 'cors';
 // Initialize express app
 const app: Express = express();
 
-// Root diagnostic route - MUST be before any other middleware
-app.get('/', (req, res) => {
-    res.json({
-        message: 'AL RABEI API is LIVE',
-        version: '1.0.1',
-        timestamp: new Date().toISOString()
-    });
-});
-
-// 1. GLOBAL CORS - MUST BE FIRST
+// 1. GLOBAL CORS - MUST BE FIRST (Before any routes)
 const corsConfigValues = getCorsConfig();
 app.use(cors(corsConfigValues));
 app.use(corsMiddleware);
 
 // Apply other middleware
 applyMiddleware(app);
+app.use(cookieParser());
+
+// Root diagnostic route
+app.get('/', (req, res) => {
+    res.json({
+        message: 'AL RABEI API is LIVE',
+        version: '1.0.1',
+        timestamp: new Date().toISOString(),
+        env: process.env.NODE_ENV
+    });
+});
 
 // API Prefix Fallback Middleware
 // If a request starts with common API routes but misses /api, redirect/rewrite it
@@ -50,9 +52,6 @@ app.use((req, res, next) => {
     }
     next();
 });
-
-// Additional middleware not covered in applyMiddleware (if any specific order needed)
-app.use(cookieParser());
 
 
 // Routes
